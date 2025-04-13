@@ -18,8 +18,6 @@
   <img src="https://github.com/user-attachments/assets/e63a3250-2dff-4cb4-907c-176dea26005e" width="50%" alt="FinalSequence">
 </p>
 
-##
-
 ## 🛠️ Componentes Utilizados
 - Arduino Uno  
 - Protoboard  
