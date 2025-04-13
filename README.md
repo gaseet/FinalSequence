@@ -1,11 +1,24 @@
-# 💣 Final Sequence
 
-Simulador de desarme de bomba criado como projeto para a disciplina de **Sistemas Digitais**.
-O jogador deve desconectar os fios na ordem correta usando um circuito com **Arduino Uno**, baseando-se no Manual de Instruções.
+<div align="center">
+  
+  # 💣 Final Sequence
 
+</div>
 
-![Final Sequence]()
+<div align="center">
+  
+  Simulador de desarme de bomba criado como projeto para a disciplina de **Sistemas Digitais**.  
+  O jogador deve desconectar os fios na ordem correta usando um circuito com **Arduino Uno**, baseando-se no Manual de Instruções.
 
+</div>
+
+##
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/e63a3250-2dff-4cb4-907c-176dea26005e" width="50%" alt="FinalSequence">
+</p>
+
+##
 
 ## 🛠️ Componentes Utilizados
 - Arduino Uno  
