@@ -29,6 +29,20 @@ O jogador deve desconectar os fios na ordem correta usando um circuito com **Ard
 - Os LCDs exibem mensagens como "Correto!", "Incorreto!", tempo restante e mensagens de início/fim.
 - O jogador deve **reconectar todos os fios** para começar uma nova tentativa após erro ou sucesso.
 
+- A sequência correta para o funcionamento do manual é:  
+  **vermelho, laranja, amarelo, verde, azul e roxo**, nessa ordem específica.
+
+- Por padrão, o código assume que esses fios estão conectados assim:
+  - **Pino 8**: vermelho
+  - **Pino 9**: laranja
+  - **Pino 10**: amarelo
+  - **Pino 11**: verde
+  - **Pino 12**: azul
+  - **Pino 13**: roxo
+
+- ⚠️ **Importante**: o manual só funcionará corretamente se essa ordem for mantida, independentemente dos pinos utilizados.  
+  Caso a ordem dos fios seja alterada fisicamente, o código deverá ser ajustado para refletir a nova correspondência.
+
 ## 📋 Exemplo de Feedback no LCD
 - ✅ Correto: `Correto! / Continue!`
 - ❌ Erro: `Incorreto! / BOOM!`
