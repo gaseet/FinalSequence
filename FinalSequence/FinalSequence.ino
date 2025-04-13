@@ -43,7 +43,7 @@ const int offsetPin = -7;  // Debug offset (pin 8 → "1")
 const unsigned long TIME_LIMIT_MS = 5 * 60 * 1000UL;  // 5 minutes
 
 // ===== LED CONFIGURATION =====
-const int whiteMasterPin = 2;
+const int whiteMasterPin = 2; // Easy way to test if LEDs are working without too much messing around
 const int greenPin = 3;
 const int redPin = 4;
 const int bluePin = 5;
