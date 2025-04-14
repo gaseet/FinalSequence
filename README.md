@@ -8,7 +8,7 @@
 <div align="center">
   
   Simulador de desarme de bomba criado como projeto para a disciplina de **Sistemas Digitais**.  
-  O jogador deve desconectar os fios na ordem correta usando um circuito com **Arduino Uno**, baseando-se no Manual de Instruções.
+  O jogador deve desconectar os fios na ordem correta usando um circuito com **Arduino Uno**, baseando-se no [Manual de Instruções](https://github.com/gaseet/FinalSequence/blob/main/Manual%20de%20desarme.pdf).
 
 </div>
 
@@ -33,7 +33,7 @@
   
 - Essa ordem correta é **codificada por LEDs coloridos** (vermelho, verde, azul, amarelo), formando um "código visual" exclusivo para cada sequência.
   
-- O jogador deve **desconectar os fios fisicamente na sequência certa**, de acordo com o manual.
+- O jogador deve **desconectar os fios fisicamente na sequência certa**, de acordo com o [manual](https://github.com/gaseet/FinalSequence/blob/main/Manual%20de%20desarme.pdf).
   
 - Se errar a ordem, o sistema exibe "BOOM!" e reinicia após reconectar todos os fios.
   
@@ -45,7 +45,7 @@
 - Os LCDs exibem mensagens como "Correto!", "Incorreto!", tempo restante e mensagens de início/fim.
 - O jogador deve **reconectar todos os fios** para começar uma nova tentativa após erro ou sucesso.
 
-- A sequência correta para o funcionamento do manual é:  
+- A sequência correta para o funcionamento do [manual](https://github.com/gaseet/FinalSequence/blob/main/Manual%20de%20desarme.pdf) é:  
   **vermelho, laranja, amarelo, verde, azul e roxo**, nessa ordem específica.
 
 - Por padrão, o código assume que esses fios estão conectados assim:
@@ -56,7 +56,7 @@
   - **Pino 12**: azul
   - **Pino 13**: roxo
 
-- ⚠️ **Importante**: o manual só funcionará corretamente se essa ordem for mantida, independentemente dos pinos utilizados.  
+- ⚠️ **Importante**: o [manual](https://github.com/gaseet/FinalSequence/blob/main/Manual%20de%20desarme.pdf) só funcionará corretamente se essa ordem for mantida, independentemente dos pinos utilizados.  
   Caso a ordem dos fios seja alterada fisicamente, o código deverá ser ajustado para refletir a nova correspondência.
 
 ## 📋 Exemplo de Feedback no LCD
@@ -70,7 +70,7 @@
 
 1. Ligue o circuito (caso necessário reconecte os fios) e espere a mensagem “Comece!”.
 2. Observe a combinação de LEDs acesos – ela representa uma das 16 sequências.
-3. Consulte o manual impresso que mapeia os padrões de LED para a sequência correta.
+3. Consulte o [manual](https://github.com/gaseet/FinalSequence/blob/main/Manual%20de%20desarme.pdf) impresso que mapeia os padrões de LED para a sequência correta.
 4. Desconecte fisicamente os fios jumper um por um na ordem correta.
 5. Em caso de erro ou tempo esgotado, reconecte todos os fios para reiniciar.
 
