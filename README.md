@@ -8,7 +8,7 @@
 <div align="center">
   
   Simulador de desarme de bomba criado como projeto para a disciplina de **Sistemas Digitais**.  
-  O jogador deve desconectar os fios na ordem correta usando um circuito com **Arduino Uno**, baseando-se no [Manual de Instruções](https://github.com/gaseet/FinalSequence/blob/main/Manual%20de%20desarme.pdf).
+  O jogador deve desconectar os fios na ordem correta usando um circuito com **Arduino Mega 2560**, baseando-se no [Manual de Instruções](https://github.com/gaseet/FinalSequence/blob/main/Manual%20de%20desarme.pdf).
 
 </div>
 
@@ -19,7 +19,7 @@
 </p>
 
 ## 🛠️ Componentes Utilizados
-- Arduino Uno  
+- Arduino Mega 2560
 - Protoboard  
 - Fios jumper  
 - LEDs (verde, vermelho, azul e amarelo)  
