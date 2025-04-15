@@ -39,7 +39,7 @@
   
 - Se o tempo máximo for excedido, o sistema também reinicia com mensagem de tempo esgotado.
 
-## 🔢 Detalhes Técnicos
+## 👨‍💻 Detalhes Técnicos
 
 - As sequências são compostas por **índices dos fios** (de 0 a 5), mapeados aos pinos físicos 8 a 13.
 - Os LCDs exibem mensagens como "Correto!", "Incorreto!", tempo restante e mensagens de início/fim.
