@@ -1,49 +1,109 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-// ===== LCD CONFIGURATION =====
-LiquidCrystal_I2C lcd(0x27, 16, 2);      // Main game display
-LiquidCrystal_I2C lcdTIME(0x26, 16, 2);  // Time display only
+// LCD Configuration
+LiquidCrystal_I2C lcd(0x26, 16, 2);
+LiquidCrystal_I2C lcdTIME(0x3F, 16, 2);
 
-// ===== HARDWARE CONFIGURATION =====
-// MUST FOLLOW ORDER: RED, ORANGE, YELLOW, GREEN, BLUE, AND PURPLE
-// The jumper wires should be connected to the physical pins (or any others, 
-// as long as they are properly adjusted in the code) in this exact order:
-//
-// 1. RED
-// 2. ORANGE
-// 3. YELLOW
-// 4. GREEN
-// 5. BLUE
-// 6. PURPLE
-//
-// For example:
-// Pin 8 -> RED
-// Pin 9 -> ORANGE
-// Pin 10 -> YELLOW
-// Pin 11 -> GREEN
-// Pin 12 -> BLUE
-// Pin 13 -> PURPLE
+// Buzzer Pins
+const int timerBuzzerPin = 22;
+const int gameBuzzerPin = 7;
 
-// Define the pins for each color (jumper pins)
+struct Note {
+  unsigned int frequency;
+  unsigned long duration;
+};
+
+// Musical Notes
+const unsigned int C6 = 1047;
+const unsigned int Ab5 = 831;
+const unsigned int Bb5 = 932;
+const unsigned int G5 = 784;
+const unsigned int F5 = 698;
+const unsigned int E5 = 659;
+const unsigned int Eb5 = 622;
+const unsigned int D5 = 587;
+const unsigned int Db5 = 554;
+const unsigned int C5 = 523;
+const unsigned int B4 = 494;
+const unsigned int Bb4 = 466;
+const unsigned int nA4 = 440;
+const unsigned int Ab4 = 415;
+const unsigned int G4 = 392;
+const unsigned int Gb4 = 370;
+const unsigned int F4 = 349;
+const unsigned int E4 = 330;
+const unsigned int Eb4 = 311;
+const unsigned int D4 = 294;
+const unsigned int Db4 = 277;
+const unsigned int C4 = 262;
+const unsigned int B3 = 247;
+const unsigned int Bb3 = 233;
+const unsigned int nA3 = 220;
+const unsigned int G3 = 196;
+const unsigned int Gb3 = 185;
+const unsigned int F3 = 175;
+const unsigned int E3 = 165;
+
+enum SoundState { SOUND_IDLE, SOUND_PLAYING, SOUND_PAUSE };
+SoundState soundState = SOUND_IDLE;
+
+// Beeps
+Note beep[] = {{1000, 50}};
+Note fastBeep[] = {{1000, 50}};
+Note fasterBeep[] = {{1000, 50}};
+Note fastestBeep[] = {{1000, 50}};
+
+// Game Sounds
+Note successMelody[] = {
+  {G3, 166}, {C4, 166}, {E4, 166}, {G4, 166}, {C5, 166}, {E5, 166}, {G5, 500}, {E5, 500},
+  {E3, 166}, {C4, 166}, {Eb4, 166}, {Ab4, 166}, {C5, 166}, {Eb5, 166}, {Ab5, 500}, {Eb5, 500},
+  {Bb3, 166}, {D4, 166}, {F4, 166}, {Bb4, 166}, {D5, 166}, {F5, 166}, {Bb5, 500},
+  {0, 50}, {Bb5, 166}, {0, 50}, {Bb5, 166}, {0, 50}, {Bb5, 166}, {C6, 2000}
+};
+
+//Note correctSound[] = {{Bb5, 200}, {0, 50}, {C6, 200}};
+Note correctSound[] = {
+  {D5, 110}, {0, 40}, {G5, 150}
+};
+
+Note wrongSound[] = {
+  {Eb4, 300}, {0, 50}, {E3, 500},
+  {200, 150}, {190, 150}, {180, 150}, {170, 150}, {160, 150},
+  {150, 150}, {140, 150}, {130, 150}, {120, 150}, {110, 150},
+  {100, 150}, {90, 150}, {80, 150}, {70, 150}, {60, 150}, {50, 150}
+};
+
+Note* currentMelody = nullptr;
+int currentNoteIndex = 0;
+int melodyLength = 0;
+unsigned long soundStartTime;
+unsigned long currentNoteDuration;
+
+// Game Hardware
 const int redJumperPin = 8;
 const int orangeJumperPin = 9;
 const int yellowJumperPin = 10;
 const int greenJumperPin = 11;
 const int blueJumperPin = 12;
 const int purpleJumperPin = 13;
-
-// Array of jumper pins in the same order as the colors
-const int jumperPins[] = {redJumperPin, orangeJumperPin, yellowJumperPin, greenJumperPin, blueJumperPin, purpleJumperPin};  // Physical pins in order
-
-
+const int jumperPins[] = {redJumperPin, orangeJumperPin, yellowJumperPin, greenJumperPin, blueJumperPin, purpleJumperPin};
 const int numPins = sizeof(jumperPins) / sizeof(jumperPins[0]);
 const int sequenceLength = numPins;
-const int offsetPin = -7;  // Debug offset (pin 8 → "1")
-const unsigned long TIME_LIMIT_MS = 5 * 60 * 1000UL;  // 5 minutes
+const int offsetPin = -7;
+const unsigned long TIME_LIMIT_MS = 5 * 60 * 1000UL;
 
-// ===== LED CONFIGURATION =====
-const int whiteMasterPin = 2; // Easy way to test if LEDs are working without too much messing around
+// Timing
+const int FAST_PERCENT = 10;
+const int FASTER_PERCENT = 5;
+const int FASTEST_PERCENT = 2;
+const unsigned long BEEP_INTERVALS[] = {1000, 500, 250, 125};
+unsigned long FAST_THRESHOLD_MS;
+unsigned long FASTER_THRESHOLD_MS;
+unsigned long FASTEST_THRESHOLD_MS;
+
+// LEDs
+const int whiteMasterPin = 2;
 const int greenPin = 3;
 const int redPin = 4;
 const int bluePin = 5;
@@ -95,11 +155,10 @@ const int* sequences[] = {
   sequence5, sequence6, sequence7, sequence8, sequence9,
   sequence10, sequence11, sequence12, sequence13, sequence14, sequence15
 };
-
 const int numSequences = sizeof(sequences) / sizeof(sequences[0]);
 
-// ===== RUNTIME VARIABLES =====
-int currentSequence[numPins];  // Stores indices (0-5) of jumperPins
+// Game State
+int currentSequence[numPins];
 int currentStep = 0;
 bool pinDisconnected[numPins] = {false};
 bool waitingForReconnect = true;
@@ -108,12 +167,91 @@ unsigned long gameStartTime = 0;
 unsigned long lastPrintTime = 0;
 int lastDisplayedSecond = -1;
 int currentSequenceIndex = 0;
-
-// Output control
 const bool printDebug = true;
 const bool lcdOn = true;
 
-// ==== LED FUNCTIONS ====
+void playMelody(Note* melody, int length, bool isTimerBeep) {
+  currentMelody = melody;
+  melodyLength = length;
+  currentNoteIndex = 0;
+  soundState = SOUND_PLAYING;
+  playCurrentNote(isTimerBeep);
+}
+
+void playCurrentNote(bool isTimerBeep) {
+  if (currentNoteIndex >= melodyLength) {
+    soundState = SOUND_IDLE;
+    if (isTimerBeep) {
+      noTone(timerBuzzerPin);
+    } else {
+      noTone(gameBuzzerPin);
+    }
+    return;
+  }
+
+  Note note = currentMelody[currentNoteIndex];
+  if (note.frequency > 0) {
+    if (isTimerBeep) {
+      tone(timerBuzzerPin, note.frequency);
+    } else {
+      tone(gameBuzzerPin, note.frequency);
+    }
+  } else {
+    if (isTimerBeep) {
+      noTone(timerBuzzerPin);
+    } else {
+      noTone(gameBuzzerPin);
+    }
+  }
+  
+  currentNoteDuration = note.duration;
+  soundStartTime = millis();
+  currentNoteIndex++;
+}
+
+void updateSound() {
+  if (soundState == SOUND_IDLE) return;
+
+  unsigned long currentTime = millis();
+  
+  if (soundState == SOUND_PLAYING && (currentTime - soundStartTime) >= currentNoteDuration) {
+    bool isTimerBeep = false;
+    if (currentMelody == beep || currentMelody == fastBeep || 
+        currentMelody == fasterBeep || currentMelody == fastestBeep) {
+      isTimerBeep = true;
+    }
+    
+    if (isTimerBeep) {
+      noTone(timerBuzzerPin);
+    } else {
+      noTone(gameBuzzerPin);
+    }
+    
+    soundState = SOUND_PAUSE;
+    soundStartTime = currentTime;
+    currentNoteDuration = max(20, currentNoteDuration * 0.1);
+  }
+  else if (soundState == SOUND_PAUSE && (currentTime - soundStartTime) >= currentNoteDuration) {
+    bool isTimerBeep = false;
+    if (currentMelody == beep || currentMelody == fastBeep || currentMelody == fasterBeep || currentMelody == fastestBeep) {
+      isTimerBeep = true;
+    }
+    playCurrentNote(isTimerBeep);
+  }
+}
+
+void sucesso() {
+  playMelody(successMelody, sizeof(successMelody)/sizeof(successMelody[0]), false);
+}
+
+void correto() {
+  playMelody(correctSound, sizeof(correctSound)/sizeof(correctSound[0]), false);
+}
+
+void errado() {
+  playMelody(wrongSound, sizeof(wrongSound)/sizeof(wrongSound[0]), false);
+}
+
 void resetLeds() {
   for (int i = 0; i < numLeds; i++) {
     digitalWrite(ledPins[i], LOW);
@@ -131,7 +269,6 @@ void indicateLed(int seqNumber) {
   }
 }
 
-// ===== PIN DISPLAY FUNCTIONS =====
 int getDisplayPin(int actualPin) {
   return actualPin + offsetPin;
 }
@@ -144,17 +281,15 @@ String getSequenceString() {
   String result;
   for (int i = 0; i < sequenceLength; i++) {
     if (i > 0) result += ",";
-    result += getPinString(jumperPins[currentSequence[i]]);  // Resolve index to pin
+    result += getPinString(jumperPins[currentSequence[i]]);
   }
   return result;
 }
 
-// ===== SEQUENCE SELECTION =====
 void selectNewSequence() {
   currentSequenceIndex = random(numSequences);
-  //currentSequenceIndex = 3;
   for (int i = 0; i < sequenceLength; i++) {
-    currentSequence[i] = sequences[currentSequenceIndex][i];  // Store indices (0-5)
+    currentSequence[i] = sequences[currentSequenceIndex][i];
   }
   indicateLed(currentSequenceIndex);
 
@@ -166,7 +301,6 @@ void selectNewSequence() {
   }
 }
 
-// ===== LCD DISPLAY FUNCTIONS =====
 void displayLCD(const String& line1, const String& line2 = "") {
   if (!lcdOn) return;
   lcd.clear();
@@ -189,7 +323,6 @@ void displayTimeLCD(const String& line1, const String& line2 = "") {
   }
 }
 
-// ===== TIME FUNCTIONS =====
 String formatTime(unsigned long milliseconds) {
   unsigned long seconds = milliseconds / 1000;
   int minutes = seconds / 60;
@@ -206,13 +339,45 @@ void displayTimeRemaining(unsigned long remainingMs) {
 void updateTimeDisplay() {
   unsigned long remaining = TIME_LIMIT_MS - (millis() - gameStartTime);
   int currentSecond = remaining / 1000;
+  static unsigned long lastBeepTime = 0;
+  
   if (currentSecond != lastDisplayedSecond) {
     lastDisplayedSecond = currentSecond;
     displayTimeRemaining(remaining);
   }
+
+  if (!timeExpired && !waitingForReconnect && soundState == SOUND_IDLE) {
+    int beepMode;
+    if (remaining <= FASTEST_THRESHOLD_MS) {
+      beepMode = 3;  // Fastest beep
+    } else if (remaining <= FASTER_THRESHOLD_MS) {
+      beepMode = 2;  // Faster beep
+    } else if (remaining <= FAST_THRESHOLD_MS) {
+      beepMode = 1;  // Fast beep
+    } else {
+      beepMode = 0;  // Normal beep
+    }
+
+    if (millis() - lastBeepTime >= BEEP_INTERVALS[beepMode]) {
+      switch (beepMode) {
+        case 3:  // Fastest
+          playMelody(fastestBeep, sizeof(fastestBeep)/sizeof(fastestBeep[0]), true);
+          break;
+        case 2:  // Faster
+          playMelody(fasterBeep, sizeof(fasterBeep)/sizeof(fasterBeep[0]), true);
+          break;
+        case 1:  // Fast
+          playMelody(fastBeep, sizeof(fastBeep)/sizeof(fastBeep[0]), true);
+          break;
+        default: // Normal
+          playMelody(beep, sizeof(beep)/sizeof(beep[0]), true);
+          break;
+      }
+      lastBeepTime = millis();
+    }
+  }
 }
 
-// ===== GAME FUNCTIONS =====
 void handleCorrectDisconnection(int pin) {
   if (printDebug) {
     Serial.println("V Correct!");
@@ -224,6 +389,7 @@ void handleCorrectDisconnection(int pin) {
   if (lcdOn) {
     displayLCD("Correto!", "Continue!");
   }
+  correto();
 
   if (++currentStep == sequenceLength) {
     unsigned long completionTime = millis() - gameStartTime;
@@ -236,7 +402,7 @@ void handleCorrectDisconnection(int pin) {
       displayLCD("SUCCESSO!", "Sequencia completa");
       displayTimeLCD("Completo em:", formatTime(completionTime));
     }
-    delay(1000);
+    sucesso();
     waitingForReconnect = true;
   }
 }
@@ -252,7 +418,7 @@ void handleWrongDisconnection(int actual, int expected) {
   if (lcdOn) {
     displayLCD("Incorreto!", "BOOM!");
   }
-  delay(1000);
+  errado();
   waitingForReconnect = true;
 }
 
@@ -277,16 +443,15 @@ void remindReconnect() {
     }
     lastPrintTime = millis();
   }
-  delay(100);
 }
 
 void checkForDisconnections() {
-  int expectedPinIndex = currentSequence[currentStep];  // Get index (0-5)
-  int expectedPin = jumperPins[expectedPinIndex];      // Resolve actual pin
+  int expectedPinIndex = currentSequence[currentStep];
+  int expectedPin = jumperPins[expectedPinIndex];
 
   for (int i = 0; i < numPins; i++) {
     int currentPin = jumperPins[i];
-    bool isDisconnected = digitalRead(currentPin) == HIGH;
+    bool isDisconnected = digitalRead(currentPin);
     
     if (isDisconnected && !pinDisconnected[i]) {
       pinDisconnected[i] = true;
@@ -295,32 +460,37 @@ void checkForDisconnections() {
       } else {
         handleWrongDisconnection(currentPin, expectedPin);
       }
-      delay(1);  // Minimal debounce
     }
   }
 }
 
 void setup() {
-  // Initialize LED pins
+  FAST_THRESHOLD_MS = TIME_LIMIT_MS * FAST_PERCENT / 100;
+  FASTER_THRESHOLD_MS = TIME_LIMIT_MS * FASTER_PERCENT / 100;
+  FASTEST_THRESHOLD_MS = TIME_LIMIT_MS * FASTEST_PERCENT / 100;
+
+  pinMode(timerBuzzerPin, OUTPUT);
+  pinMode(gameBuzzerPin, OUTPUT);
+  digitalWrite(timerBuzzerPin, LOW);
+  digitalWrite(gameBuzzerPin, LOW);
+  
   pinMode(whiteMasterPin, OUTPUT);
   digitalWrite(whiteMasterPin, HIGH);
+  
   for (int i = 0; i < numLeds; i++) {
     pinMode(ledPins[i], OUTPUT);
   }
   resetLeds();
 
-  // Initialize jumper pins
   for (int i = 0; i < numPins; i++) {
     pinMode(jumperPins[i], INPUT_PULLUP);
   }
 
-  // Initialize serial
   if (printDebug) {
     Serial.begin(9600);
     Serial.println("System ready");
   }
 
-  // Initialize LCDs
   if (lcdOn) {
     lcd.init();
     lcd.backlight();
@@ -334,12 +504,15 @@ void setup() {
 }
 
 void loop() {
+  updateSound();
+  
   static bool timeUpMessageShown = false;
   
   if (timeExpired) {
     if (!timeUpMessageShown) {
       displayLCD("ACABOU O TEMPO!", "Reconecte tudo");
       displayTimeLCD("ACABOU O TEMPO!", "Reconecte tudo");
+      errado();
       delay(1000);
       remindReconnect();
       timeUpMessageShown = true;
