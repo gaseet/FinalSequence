@@ -48,6 +48,9 @@ const unsigned int E3 = 165;
 enum SoundState { SOUND_IDLE, SOUND_PLAYING, SOUND_PAUSE };
 SoundState soundState = SOUND_IDLE;
 
+enum TimerBeepState { TIMER_IDLE, TIMER_PLAYING, TIMER_PAUSE };
+TimerBeepState timerBeepState = TIMER_IDLE;
+
 // Beeps
 Note beep[] = {{1000, 50}};
 Note fastBeep[] = {{1000, 50}};
@@ -62,7 +65,6 @@ Note successMelody[] = {
   {0, 50}, {Bb5, 166}, {0, 50}, {Bb5, 166}, {0, 50}, {Bb5, 166}, {C6, 2000}
 };
 
-//Note correctSound[] = {{Bb5, 200}, {0, 50}, {C6, 200}};
 Note correctSound[] = {
   {D5, 110}, {0, 40}, {G5, 150}
 };
@@ -79,6 +81,16 @@ int currentNoteIndex = 0;
 int melodyLength = 0;
 unsigned long soundStartTime;
 unsigned long currentNoteDuration;
+
+Note* currentTimerMelody = nullptr;
+int currentTimerNoteIndex = 0;
+int timerMelodyLength = 0;
+unsigned long timerSoundStartTime;
+unsigned long currentTimerNoteDuration;
+
+bool timerBeepActive = false;
+unsigned long timerBeepEndTime = 0;
+unsigned long lastBeepTime = 0;
 
 // Game Hardware
 const int redJumperPin = 8;
@@ -132,7 +144,6 @@ const bool ledPatterns[16][4] = {
 };
 
 // ===== SEQUENCES (INDEX-BASED) =====
-// Each value is an index into jumperPins (0-5)
 const int sequence0[] = {1, 0, 4, 2, 3, 5};
 const int sequence1[] = {5, 3, 2, 4, 1, 0};
 const int sequence2[] = {3, 4, 2, 1, 5, 0};
@@ -171,37 +182,33 @@ const bool printDebug = true;
 const bool lcdOn = true;
 
 void playMelody(Note* melody, int length, bool isTimerBeep) {
-  currentMelody = melody;
-  melodyLength = length;
-  currentNoteIndex = 0;
-  soundState = SOUND_PLAYING;
-  playCurrentNote(isTimerBeep);
+  if (isTimerBeep) {
+    currentTimerMelody = melody;
+    timerMelodyLength = length;
+    currentTimerNoteIndex = 0;
+    timerBeepState = TIMER_PLAYING;
+    playCurrentTimerNote();
+  } else {
+    currentMelody = melody;
+    melodyLength = length;
+    currentNoteIndex = 0;
+    soundState = SOUND_PLAYING;
+    playCurrentNote(false);
+  }
 }
 
 void playCurrentNote(bool isTimerBeep) {
   if (currentNoteIndex >= melodyLength) {
     soundState = SOUND_IDLE;
-    if (isTimerBeep) {
-      noTone(timerBuzzerPin);
-    } else {
-      noTone(gameBuzzerPin);
-    }
+    noTone(gameBuzzerPin);
     return;
   }
 
   Note note = currentMelody[currentNoteIndex];
   if (note.frequency > 0) {
-    if (isTimerBeep) {
-      tone(timerBuzzerPin, note.frequency);
-    } else {
-      tone(gameBuzzerPin, note.frequency);
-    }
+    tone(gameBuzzerPin, note.frequency);
   } else {
-    if (isTimerBeep) {
-      noTone(timerBuzzerPin);
-    } else {
-      noTone(gameBuzzerPin);
-    }
+    noTone(gameBuzzerPin);
   }
   
   currentNoteDuration = note.duration;
@@ -209,34 +216,54 @@ void playCurrentNote(bool isTimerBeep) {
   currentNoteIndex++;
 }
 
-void updateSound() {
-  if (soundState == SOUND_IDLE) return;
-
-  unsigned long currentTime = millis();
-  
-  if (soundState == SOUND_PLAYING && (currentTime - soundStartTime) >= currentNoteDuration) {
-    bool isTimerBeep = false;
-    if (currentMelody == beep || currentMelody == fastBeep || 
-        currentMelody == fasterBeep || currentMelody == fastestBeep) {
-      isTimerBeep = true;
-    }
-    
-    if (isTimerBeep) {
-      noTone(timerBuzzerPin);
-    } else {
-      noTone(gameBuzzerPin);
-    }
-    
-    soundState = SOUND_PAUSE;
-    soundStartTime = currentTime;
-    currentNoteDuration = max(20, currentNoteDuration * 0.1);
+void playCurrentTimerNote() {
+  if (currentTimerNoteIndex >= timerMelodyLength) {
+    timerBeepState = TIMER_IDLE;
+    noTone(timerBuzzerPin);
+    return;
   }
-  else if (soundState == SOUND_PAUSE && (currentTime - soundStartTime) >= currentNoteDuration) {
-    bool isTimerBeep = false;
-    if (currentMelody == beep || currentMelody == fastBeep || currentMelody == fasterBeep || currentMelody == fastestBeep) {
-      isTimerBeep = true;
+
+  Note note = currentTimerMelody[currentTimerNoteIndex];
+  if (note.frequency > 0) {
+    tone(timerBuzzerPin, note.frequency);
+  } else {
+    noTone(timerBuzzerPin);
+  }
+  
+  currentTimerNoteDuration = note.duration;
+  timerSoundStartTime = millis();
+  currentTimerNoteIndex++;
+}
+
+void updateSound() {
+  // Handle game sounds
+  if (soundState != SOUND_IDLE) {
+    unsigned long currentTime = millis();
+    
+    if (soundState == SOUND_PLAYING && (currentTime - soundStartTime) >= currentNoteDuration) {
+      noTone(gameBuzzerPin);
+      soundState = SOUND_PAUSE;
+      soundStartTime = currentTime;
+      currentNoteDuration = max(20, currentNoteDuration * 0.1);
     }
-    playCurrentNote(isTimerBeep);
+    else if (soundState == SOUND_PAUSE && (currentTime - soundStartTime) >= currentNoteDuration) {
+      playCurrentNote(false);
+    }
+  }
+
+  // Handle timer beeps
+  if (timerBeepState != TIMER_IDLE) {
+    unsigned long currentTime = millis();
+    
+    if (timerBeepState == TIMER_PLAYING && (currentTime - timerSoundStartTime) >= currentTimerNoteDuration) {
+      noTone(timerBuzzerPin);
+      timerBeepState = TIMER_PAUSE;
+      timerSoundStartTime = currentTime;
+      currentTimerNoteDuration = max(20, currentTimerNoteDuration * 0.1);
+    }
+    else if (timerBeepState == TIMER_PAUSE && (currentTime - timerSoundStartTime) >= currentTimerNoteDuration) {
+      playCurrentTimerNote();
+    }
   }
 }
 
@@ -250,6 +277,37 @@ void correto() {
 
 void errado() {
   playMelody(wrongSound, sizeof(wrongSound)/sizeof(wrongSound[0]), false);
+}
+
+void playTimerBeep() {
+  tone(timerBuzzerPin, beep[0].frequency);
+  timerBeepEndTime = millis() + beep[0].duration;
+  timerBeepActive = true;
+}
+
+void playFastTimerBeep() {
+  tone(timerBuzzerPin, fastBeep[0].frequency);
+  timerBeepEndTime = millis() + fastBeep[0].duration;
+  timerBeepActive = true;
+}
+
+void playFasterTimerBeep() {
+  tone(timerBuzzerPin, fasterBeep[0].frequency);
+  timerBeepEndTime = millis() + fasterBeep[0].duration;
+  timerBeepActive = true;
+}
+
+void playFastestTimerBeep() {
+  tone(timerBuzzerPin, fastestBeep[0].frequency);
+  timerBeepEndTime = millis() + fastestBeep[0].duration;
+  timerBeepActive = true;
+}
+
+void updateTimerBeep() {
+  if (timerBeepActive && millis() >= timerBeepEndTime) {
+    noTone(timerBuzzerPin);
+    timerBeepActive = false;
+  }
 }
 
 void resetLeds() {
@@ -339,14 +397,13 @@ void displayTimeRemaining(unsigned long remainingMs) {
 void updateTimeDisplay() {
   unsigned long remaining = TIME_LIMIT_MS - (millis() - gameStartTime);
   int currentSecond = remaining / 1000;
-  static unsigned long lastBeepTime = 0;
   
   if (currentSecond != lastDisplayedSecond) {
     lastDisplayedSecond = currentSecond;
     displayTimeRemaining(remaining);
   }
 
-  if (!timeExpired && !waitingForReconnect && soundState == SOUND_IDLE) {
+  if (!timeExpired && !waitingForReconnect) {
     int beepMode;
     if (remaining <= FASTEST_THRESHOLD_MS) {
       beepMode = 3;  // Fastest beep
@@ -360,18 +417,10 @@ void updateTimeDisplay() {
 
     if (millis() - lastBeepTime >= BEEP_INTERVALS[beepMode]) {
       switch (beepMode) {
-        case 3:  // Fastest
-          playMelody(fastestBeep, sizeof(fastestBeep)/sizeof(fastestBeep[0]), true);
-          break;
-        case 2:  // Faster
-          playMelody(fasterBeep, sizeof(fasterBeep)/sizeof(fasterBeep[0]), true);
-          break;
-        case 1:  // Fast
-          playMelody(fastBeep, sizeof(fastBeep)/sizeof(fastBeep[0]), true);
-          break;
-        default: // Normal
-          playMelody(beep, sizeof(beep)/sizeof(beep[0]), true);
-          break;
+        case 3: playFastestTimerBeep(); break;
+        case 2: playFasterTimerBeep(); break;
+        case 1: playFastTimerBeep(); break;
+        default: playTimerBeep(); break;
       }
       lastBeepTime = millis();
     }
@@ -430,8 +479,27 @@ bool allJumpersConnected() {
 }
 
 void resetForNewAttempt() {
+  // Stop all sounds immediately
+  noTone(gameBuzzerPin);
+  noTone(timerBuzzerPin);
+  
+  // Reset game sound state
+  soundState = SOUND_IDLE;
+  currentMelody = nullptr;
+  currentNoteIndex = 0;
+  
+  // Reset timer beep state
+  timerBeepState = TIMER_IDLE;
+  currentTimerMelody = nullptr;
+  currentTimerNoteIndex = 0;
+  timerBeepActive = false;
+  
+  // Reset game state
   currentStep = 0;
   memset(pinDisconnected, false, sizeof(pinDisconnected));
+  
+  // Reset any pending beeps
+  lastBeepTime = millis(); // This prevents immediate beep after reset
 }
 
 void remindReconnect() {
@@ -469,6 +537,12 @@ void setup() {
   FASTER_THRESHOLD_MS = TIME_LIMIT_MS * FASTER_PERCENT / 100;
   FASTEST_THRESHOLD_MS = TIME_LIMIT_MS * FASTEST_PERCENT / 100;
 
+  soundState = SOUND_IDLE;
+  timerBeepState = TIMER_IDLE;
+  timerBeepActive = false;
+  currentMelody = nullptr;
+  currentTimerMelody = nullptr;
+
   pinMode(timerBuzzerPin, OUTPUT);
   pinMode(gameBuzzerPin, OUTPUT);
   digitalWrite(timerBuzzerPin, LOW);
@@ -505,6 +579,7 @@ void setup() {
 
 void loop() {
   updateSound();
+  updateTimerBeep();
   
   static bool timeUpMessageShown = false;
   
